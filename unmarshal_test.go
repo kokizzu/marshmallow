@@ -2306,8 +2306,9 @@ func TestEmbedding(t *testing.T) {
 }
 
 type handleJSONDataParent struct {
-	Known  string              `json:"known"`
-	Nested handleJSONDataChild `json:"nested"`
+	Known   string              `json:"known"`
+	Nested1 handleJSONDataChild `json:"nested1"`
+	Nested2 handleJSONDataChild `json:"nested2"`
 }
 
 type handleJSONDataChild struct {
@@ -2316,19 +2317,110 @@ type handleJSONDataChild struct {
 	Data map[string]interface{} `json:"-"`
 }
 
-func (c *handleJSONDataChild) HandleJSONData(data map[string]interface{}) {
+func (c *handleJSONDataChild) HandleJSONData(data map[string]interface{}) error {
+	if _, exists := data["fail"]; exists {
+		return errors.New("HandleJSONData failure")
+	}
+	c.Data = data
+	return nil
+}
+
+type handleJSONDataDeprecatedParent struct {
+	Known  string                        `json:"known"`
+	Nested handleJSONDataDeprecatedChild `json:"nested"`
+}
+
+type handleJSONDataDeprecatedChild struct {
+	Known string `json:"known"`
+
+	Data map[string]interface{} `json:"-"`
+}
+
+func (c *handleJSONDataDeprecatedChild) HandleJSONData(data map[string]interface{}) {
 	c.Data = data
 }
 
 func TestJSONDataHandler(t *testing.T) {
 	t.Run("test_JSONDataHandler", func(t *testing.T) {
-		data := []byte(`{"known": "foo","unknown": "boo","nested": {"known": "goo","unknown": "doo"}}`)
+		data := []byte(`{
+			"known": "foo",
+			"unknown":"boo",
+			"nested1": {"known": "goo","unknown": "doo"},
+			"nested2": {"known": "goo","unknown": "doo"}
+		}`)
 		p := &handleJSONDataParent{}
 		result, err := Unmarshal(data, p)
 		if err != nil {
 			t.Errorf("unexpected error %v", err)
 		}
-		_, ok := result["nested"].(handleJSONDataChild)
+		_, ok := result["nested1"].(handleJSONDataChild)
+		if !ok {
+			t.Error("invalid map value")
+		}
+		if p.Nested1.Data == nil {
+			t.Error("Nested1 HandleJSONData not called")
+		}
+		if len(p.Nested1.Data) != 2 || p.Nested1.Data["known"] != "goo" || p.Nested1.Data["unknown"] != "doo" {
+			t.Error("Nested1 invalid JSON data")
+		}
+		_, ok = result["nested2"].(handleJSONDataChild)
+		if !ok {
+			t.Error("invalid map value")
+		}
+		if p.Nested2.Data == nil {
+			t.Error("Nested2 HandleJSONData not called")
+		}
+		if len(p.Nested2.Data) != 2 || p.Nested2.Data["known"] != "goo" || p.Nested2.Data["unknown"] != "doo" {
+			t.Error("Nested2 invalid JSON data")
+		}
+	})
+	t.Run("test_JSONDataHandler_single_error", func(t *testing.T) {
+		data := []byte(`{
+			"known": "foo",
+			"unknown":"boo",
+			"nested1": {"known": "goo","unknown": "doo", "fail": true},
+			"nested2": {"known": "goo","unknown": "doo", "fail": true}
+		}`)
+		p := &handleJSONDataParent{}
+		_, err := Unmarshal(data, p)
+		if err == nil {
+			t.Errorf("expected JSONDataHandler error %v", err)
+		}
+		e, ok := err.(*jlexer.LexerError)
+		if !ok || e.Reason != "HandleJSONData failure" {
+			t.Errorf("unexpected JSONDataHandler error type %v", err)
+		}
+	})
+	t.Run("test_JSONDataHandler_multiple_error", func(t *testing.T) {
+		data := []byte(`{
+			"known": "foo",
+			"unknown":"boo",
+			"nested1": {"known": "goo","unknown": "doo", "fail": true},
+			"nested2": {"known": "goo","unknown": "doo", "fail": true}
+		}`)
+		p := &handleJSONDataParent{}
+		_, err := Unmarshal(data, p, WithMode(ModeAllowMultipleErrors))
+		if err == nil {
+			t.Errorf("expected JSONDataHandler error %v", err)
+		}
+		e, ok := err.(*MultipleLexerError)
+		if !ok {
+			t.Errorf("unexpected JSONDataHandler error type %v", err)
+		}
+		for _, lexerError := range e.Errors {
+			if lexerError.Reason != "HandleJSONData failure" {
+				t.Errorf("unexpected JSONDataHandler error type %v", err)
+			}
+		}
+	})
+	t.Run("test_JSONDataHandler_deprecated", func(t *testing.T) {
+		data := []byte(`{"known": "foo","unknown": "boo","nested": {"known": "goo","unknown": "doo"}}`)
+		p := &handleJSONDataDeprecatedParent{}
+		result, err := Unmarshal(data, p)
+		if err != nil {
+			t.Errorf("unexpected error %v", err)
+		}
+		_, ok := result["nested"].(handleJSONDataDeprecatedChild)
 		if !ok {
 			t.Error("invalid map value")
 		}
@@ -2477,7 +2569,9 @@ type nestedSkipPopulateChild struct {
 	Foo string `json:"foo"`
 }
 
-func (c *nestedSkipPopulateChild) HandleJSONData(map[string]interface{}) {}
+func (c *nestedSkipPopulateChild) HandleJSONData(map[string]interface{}) error {
+	return nil
+}
 
 var extraData = map[string]interface{}{
 	"extra1": "foo",
@@ -2496,7 +2590,9 @@ type failOverStruct struct {
 	C string `json:"c"`
 }
 
-func (f *failOverStruct) HandleJSONData(map[string]interface{}) {}
+func (f *failOverStruct) HandleJSONData(map[string]interface{}) error {
+	return nil
+}
 
 func buildParentStruct() *parentStruct {
 	return &parentStruct{

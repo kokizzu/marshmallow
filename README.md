@@ -6,7 +6,7 @@
 [![Run Tests](https://img.shields.io/github/actions/workflow/status/perimeterx/marshmallow/go.yml?branch=main&logo=github&label=Run%20Tests)](https://github.com/PerimeterX/marshmallow/actions/workflows/go.yml?query=branch%3Amain)
 [![Dependency Review](https://img.shields.io/github/actions/workflow/status/perimeterx/marshmallow/dependency-review.yml?logo=github&label=Dependency%20Review)](https://github.com/PerimeterX/marshmallow/actions/workflows/dependency-review.yml?query=branch%3Amain)
 [![Go Report Card](https://goreportcard.com/badge/github.com/perimeterx/marshmallow)](https://goreportcard.com/report/github.com/perimeterx/marshmallow)
-![Manual Code Coverage](https://img.shields.io/badge/coverage-92.4%25-green)
+![Manual Code Coverage](https://img.shields.io/badge/coverage-92.6%25-green)
 [![Go Reference](https://pkg.go.dev/badge/github.com/perimeterx/marshmallow.svg)](https://pkg.go.dev/github.com/perimeterx/marshmallow)
 [![Licence](https://img.shields.io/github/license/perimeterx/marshmallow)](LICENSE)
 [![Latest Release](https://img.shields.io/github/v/release/perimeterx/marshmallow)](https://github.com/PerimeterX/marshmallow/releases)
@@ -177,7 +177,7 @@ While unmarshalling, marshmallow supports the following optional options:
 * Excluding known fields from the result map using the [WithExcludeKnownFieldsFromMap](https://github.com/PerimeterX/marshmallow/blob/457669ae9973895584f2636eabfc104140d3b700/options.go#L50) function. 
 * Skipping struct population to boost performance using the [WithSkipPopulateStruct](https://github.com/PerimeterX/marshmallow/blob/0e0218ab860be8a4b5f57f5ff239f281c250c5da/options.go#L41) function.
 
-In order to capture unknown nested fields, structs must implement [JSONDataHandler](https://github.com/PerimeterX/marshmallow/blob/2d254bf2ed5f9b02cafb8ba6eaa726cba38bc92b/options.go#L65).
+In order to capture unknown nested fields, structs must implement [JSONDataErrorHandler](https://github.com/PerimeterX/marshmallow/blob/195c994aa6e3e0852601ad9cf65bcddef0dd7479/options.go#L76).
 More info [here](https://github.com/PerimeterX/marshmallow/issues/15). 
 
 Marshmallow also supports caching of refection information using 

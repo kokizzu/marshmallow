@@ -2279,7 +2279,11 @@ func TestUnmarshalFromJSONMapJSONDataHandler(t *testing.T) {
 		data := map[string]interface{}{
 			"known":   "foo",
 			"unknown": "boo",
-			"nested": map[string]interface{}{
+			"nested1": map[string]interface{}{
+				"known":   "goo",
+				"unknown": "doo",
+			},
+			"nested2": map[string]interface{}{
 				"known":   "goo",
 				"unknown": "doo",
 			},
@@ -2289,7 +2293,80 @@ func TestUnmarshalFromJSONMapJSONDataHandler(t *testing.T) {
 		if err != nil {
 			t.Errorf("unexpected error %v", err)
 		}
-		_, ok := result["nested"].(handleJSONDataChild)
+		_, ok := result["nested1"].(handleJSONDataChild)
+		if !ok {
+			t.Error("invalid map value")
+		}
+		if p.Nested1.Data == nil {
+			t.Error("HandleJSONData not called")
+		}
+		if len(p.Nested1.Data) != 2 || p.Nested1.Data["known"] != "goo" || p.Nested1.Data["unknown"] != "doo" {
+			t.Error("invalid JSON data")
+		}
+		_, ok = result["nested2"].(handleJSONDataChild)
+		if !ok {
+			t.Error("invalid map value")
+		}
+		if p.Nested2.Data == nil {
+			t.Error("HandleJSONData not called")
+		}
+		if len(p.Nested2.Data) != 2 || p.Nested2.Data["known"] != "goo" || p.Nested2.Data["unknown"] != "doo" {
+			t.Error("invalid JSON data")
+		}
+	})
+	t.Run("test_JSONDataHandler_single_error", func(t *testing.T) {
+		data := map[string]interface{}{
+			"known":   "foo",
+			"unknown": "boo",
+			"nested1": map[string]interface{}{"known": "goo", "unknown": "doo", "fail": true},
+			"nested2": map[string]interface{}{"known": "goo", "unknown": "doo", "fail": true},
+		}
+		p := &handleJSONDataParent{}
+		_, err := UnmarshalFromJSONMap(data, p)
+		if err == nil {
+			t.Errorf("expected JSONDataHandler error %v", err)
+		}
+		if err.Error() != "HandleJSONData failure" {
+			t.Errorf("unexpected JSONDataHandler error type %v", err)
+		}
+	})
+	t.Run("test_JSONDataHandler_multiple_error", func(t *testing.T) {
+		data := map[string]interface{}{
+			"known":   "foo",
+			"unknown": "boo",
+			"nested1": map[string]interface{}{"known": "goo", "unknown": "doo", "fail": true},
+			"nested2": map[string]interface{}{"known": "goo", "unknown": "doo", "fail": true},
+		}
+		p := &handleJSONDataParent{}
+		_, err := UnmarshalFromJSONMap(data, p, WithMode(ModeAllowMultipleErrors))
+		if err == nil {
+			t.Errorf("expected JSONDataHandler error %v", err)
+		}
+		e, ok := err.(*MultipleError)
+		if !ok {
+			t.Errorf("unexpected JSONDataHandler error type %v", err)
+		}
+		for _, currentError := range e.Errors {
+			if currentError.Error() != "HandleJSONData failure" {
+				t.Errorf("unexpected JSONDataHandler error type %v", err)
+			}
+		}
+	})
+	t.Run("test_JSONDataHandler_deprecated", func(t *testing.T) {
+		data := map[string]interface{}{
+			"known":   "foo",
+			"unknown": "boo",
+			"nested": map[string]interface{}{
+				"known":   "goo",
+				"unknown": "doo",
+			},
+		}
+		p := &handleJSONDataDeprecatedParent{}
+		result, err := UnmarshalFromJSONMap(data, p)
+		if err != nil {
+			t.Errorf("unexpected error %v", err)
+		}
+		_, ok := result["nested"].(handleJSONDataDeprecatedChild)
 		if !ok {
 			t.Error("invalid map value")
 		}

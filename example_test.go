@@ -248,6 +248,7 @@ type childStruct struct {
 	Data map[string]interface{} `json:"-"`
 }
 
-func (c *childStruct) HandleJSONData(data map[string]interface{}) {
+func (c *childStruct) HandleJSONData(data map[string]interface{}) error {
 	c.Data = data
+	return nil
 }
